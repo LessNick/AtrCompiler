@@ -14,6 +14,15 @@
 #include <unistd.h>
 #endif
 
+#include <vector>
+#include <sys/types.h>
+#include <sys/stat.h>
+
+// http://jsoncpp.sourceforge.net/
+#include "json/json.h"
+
+#include "md5.h"
+
 using namespace std;
 
 void make_dir(const std::string & name)
@@ -316,10 +325,105 @@ void unpack(filesystem * fs, const string & dir_file)
 
 }
 
+Json::Value unpackDirJson(filesystem::dir* dir, int nesting, disk::sector_num dos_first_sector) {
+	Json::Value dirList;
+
+	int idx = 0;
+	for (; !dir->at_end(); dir->next()) {
+		if (dir->is_deleted()) continue;
+
+		Json::Value fileInfo;
+
+		fileInfo["name"] = dir->name();
+
+	if (dir->is_dir()) {
+		auto subdir = dir->open_dir();
+		fileInfo["type"] = "dir";
+		fileInfo["sub_dir"] = unpackDirJson(subdir, nesting + 1, dos_first_sector);
+		delete subdir;
+	
+	} else {
+		fileInfo["type"] = "file";
+
+		auto file = dir->open_file();
+		unsigned char md5_value[16];
+		MD5_CTX md5;
+
+		unsigned char data[1];
+
+		MD5Init(&md5);
+		for (int i = 0; i < dir->size(); i++) {
+			data[0] = file->read();
+			MD5Update(&md5, data, 1);
+		}
+
+		MD5Final(&md5, md5_value);
+
+		fileInfo["size"] = dir->size();
+		fileInfo["sec_size"] = dir->sec_size();
+
+		char md5_str[16*2 + 1] = { 0 };
+
+		char tmp[100] = { 0 };
+		memset(md5_str, 0, 16*2 + 1);
+
+		for (int i = 0; i < 16; i++) {
+			sprintf_s(tmp, "%02x", md5_value[i]);
+			strcat_s(md5_str, tmp);
+		}
+
+		fileInfo["md5"] = md5_str;
+
+	}
+		dirList[idx] = fileInfo;
+		idx++;
+	}
+	return dirList;
+}
+
+void unpackJson(filesystem * fs, string fileName) {
+
+	Json::Value root;
+	Json::Value info;
+	Json::Value dirList;
+
+	info["sector_count"] = fs->sector_count();
+	info["sector_size"] = fs->sector_size();
+	info["format"] = fs->name();
+
+	auto dos_first_sector = fs->get_dos_first_sector();
+
+	auto dir = fs->root_dir();
+
+	dirList = unpackDirJson(dir, 0, dos_first_sector);
+
+	delete dir;
+
+	info["free_sectors"] = fs->free_sector_count();
+
+	root["info"] = info;
+	root["dir"] = dirList;
+
+	Json::StreamWriterBuilder builder;
+	const std::string json_file = Json::writeString(builder, root);
+	if (fileName != "") {
+		std::ofstream out(fileName);
+		out << json_file;
+		out.close();
+	} else {
+		std::cout << json_file << std::endl;
+	}
+
+}
+
 const string help =
-"AtrCompiler v0.5\n"
+"AtrCompiler v0.6\n"
+"----------------\n"
+"https://github.com/rudla/AtrCompiler\n"
+"https://github.com/LessNick/AtrCompiler\n"
 "\n"
 "Usage:\n"
+"AtrCompiler json   atr_file [out_filename]\n"
 "AtrCompiler list   atr_file\n"
 "AtrCompiler pack   atr_file [dir_file]\n"
 "AtrCompiler unpack atr_file [dir_file]\n"
@@ -371,11 +475,22 @@ int main(int argc, char *argv[])
 		if (argc == 1) {
 			cout << help;
 		} else {
-			if (strcmp(argv[x], "list") == 0) {
+			if (strcmp(argv[x], "json") == 0) {
+				x++;
+				auto d = disk::load(argv[x++]);
+				auto fs = detect_filesystem(d);
+				string fileName = "";
+				if (x < argc) {
+					fileName = argv[x++];
+				}
+				unpackJson(fs, fileName);
+
+			} else if (strcmp(argv[x], "list") == 0) {
 				x++;
 				auto d = disk::load(argv[x++]);
 				auto fs = detect_filesystem(d);
 				unpack(fs, "");
+			
 			} else if (strcmp(argv[x], "pack") == 0) {
 				x++;
 				string atr = argv[x++];
@@ -386,15 +501,35 @@ int main(int argc, char *argv[])
 				auto d2 = pack(dir);
 				d2->save(atr);
 				delete d2;
+			
 			} else if (strcmp(argv[x], "unpack") == 0) {
 				x++;
 				string atr = argv[x++];
 				string dir = "dir.txt";
-				if (x < argc) {
-					dir = argv[x++];
-				}
 				auto d = disk::load(atr);
 				auto fs = detect_filesystem(d);
+
+				if (x < argc) {
+					char* unpackPath = argv[x++];
+
+					struct stat info;
+
+					if (stat(unpackPath, &info) != 0) {
+						auto status = _mkdir(unpackPath);
+						if (status == -1) {
+							cerr << "Error: Can;t create \"" << unpackPath << "\" directory\n";
+							return 2;
+						}
+					}
+
+					auto status = _chdir(unpackPath);
+					if (status == -1) {
+						cerr << "Error: Can;t change \"" << unpackPath << "\" directory\n";
+						return 2;
+					}
+
+				}
+
 				unpack(fs, dir);
 			}
 		}

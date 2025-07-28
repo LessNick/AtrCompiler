@@ -46,6 +46,9 @@
     <ClCompile Include="..\libatr\expanded_vtoc.cpp">
       <Filter>libatr</Filter>
     </ClCompile>
+    <ClCompile Include="md5.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\libatr\disk.h">
@@ -81,5 +84,6 @@
     <ClInclude Include="..\libatr\expanded_vtoc.h">
       <Filter>libatr</Filter>
     </ClInclude>
+    <ClInclude Include="md5.h" />
   </ItemGroup>
 </Project>
