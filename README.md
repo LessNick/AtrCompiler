@@ -1,4 +1,5 @@
 # AtrCompiler
+
 Tool to create Atari disk images (ATR files).
 
 ## Usage
@@ -7,6 +8,7 @@ AtrCompiler can unpack contents of a ATR disk to a folder as separate files and 
 You can then modify the files and pack them to a new ATR disk.
 
 ```
+AtrCompiler json   atr_file [out_filename]
 AtrCompiler list   atr_file
 AtrCompiler pack   atr_file [dir_file]
 AtrCompiler unpack atr_file [dir_file]
@@ -20,29 +22,34 @@ When unpacking the disk, filesystem will be autodetected. If the filesystem is n
 Boot sectors are automatically saved into BOOT.BIN file.
 
 ## Dir file
+
 Directory file describes format and contents of the created disk. It is composed on commands. Every command is on separate line.
 
 ```
 DISK  <sector size> <number of sectors>
 ```
+
 Specifies the size of the disk.
 
 ```
 BOOT  filename
 ```
+
 The disk will be bootable. The file specified must contain 3 sectors that will be used for booting.
 
 ```
 FORMAT  filesystem [2.5]
 ```
+
 Format the disk for use with specified filesystem.
 Possible values are:
- * 2.0
- * 2.5
- * II+
- * mydos
- * sparta
- * xdos
+
+* 2.0
+* 2.5
+* II+
+* mydos
+* sparta
+* xdos
 
 ### Filesystem parameters
 
@@ -56,6 +63,7 @@ BUFFERS $02
 ```
 
 ### Files
+
 ```
 [BIN|DOS|] filename [atarifilename]
 ```
@@ -66,6 +74,7 @@ Filename may be followed by another filename, which specifies how should be the 
 ```
 --- atarifilename
 ```
+
 Special --- format means, the file is empty (there is no file) and only empty directory entry should be created.
 
 ## Atari filename format
@@ -105,20 +114,23 @@ MyDos subdirectories are supported.
 ```
 BUFFERS num
 ```
+
 Number of 128 bytes buffers (and open files).
 MemLo depends on it!
+
 ```
 RAMDISK $yx
 ```
 
- * $8x -> 128KB , 1009 sectors in Medium Density
- * $2x -> 64KB (130XE), 499 sectors in Single Density 
- * $4x -> 16KB (normal XL/XE) memory under ROM-OS 
+* $8x -> 128KB , 1009 sectors in Medium Density
+* $2x -> 64KB (130XE), 499 sectors in Single Density 
+* $4x -> 16KB (normal XL/XE) memory under ROM-OS 
 
 x -> 
- * If it's 1, RAMdisk will be formated after DOS will load. 
- * If it's a 0 RAMdisk will not be formated 
- * and if it's 8, the RAMdisk will be write protected
+
+* If it's 1, RAMdisk will be formated after DOS will load. 
+* If it's a 0 RAMdisk will not be formated 
+* and if it's 8, the RAMdisk will be write protected
 
 ## XDOS
 
@@ -127,6 +139,7 @@ XDOS is successor of DOS II+. It has simmilar disk structure.
 ```
 BUFFERS num
 ```
+
 Number of 128 bytes buffers (and open files).
 MemLo depends on it!
 
